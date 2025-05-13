@@ -1,117 +1,461 @@
 // Importing necessary hooks and components
-import { useForm } from "@refinedev/react-hook-form"; // Hook for form handling
-import { TextField, Button, Box, MenuItem, Typography } from "@mui/material"; // Material-UI components
-import { Controller } from "react-hook-form"; // React Hook Form's controller for controlled components
-import { useState } from "react"; // React state management
-import { supabaseClient } from "../../utility/supabaseClient"; // Supabase client for database interactions
-import { ImageHandler } from "../common/image_handler"; // Import the ImageHandler component
+import { useForm } from "@refinedev/react-hook-form";
+import {
+  TextField,
+  Button,
+  Box,
+  MenuItem,
+  Typography,
+  FormControlLabel,
+  Checkbox,
+  FormGroup,
+  Select,
+  OutlinedInput,
+  Chip,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  createTheme,
+  ThemeProvider,
+  CssBaseline,
+  Switch,
+  CircularProgress
+} from "@mui/material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import { Controller } from "react-hook-form";
+import { useState, useEffect } from "react";
+import { supabaseClient } from "../../utility/supabaseClient";
+import { ImageHandler } from "../common/data-capture/image_capture";
+import AddressCapture from "../common/data-capture/address_capture";
 
-// Main component for the Node Setup Form
+// Capabilities list
+const CAPABILITY_OPTIONS = [
+  "housing", "education", "food", "logistics", "technology", "childcare", "emergency shelter"
+];
+
 export const NodeSetupForm = () => {
-  // Initializing the form with default values and extracting necessary methods
-  const {
-    handleSubmit, // Handles form submission
-    control, // Controls form fields
-    setValue, // Sets the value of a specific field
-    watch, // Watches the value of a specific field
-    formState: { isSubmitting }, // Tracks the form's submission state
-  } = useForm({
-    defaultValues: {
-      name: "", // Default value for the "name" field
-      address: "", // Default value for the "address" field
-      profile_image_url: "", // Default value for the "profile_image_url" field
-      node_type: "", // Default value for the "node_type" field
-      established_on: "", // Default value for the "established_on" field
+  const [darkMode, setDarkMode] = useState(false);
+  const [nodeTypes, setNodeTypes] = useState<{ id: number; node_type: string }[]>([]);
+  const [capabilities, setCapabilities] = useState<string[]>([]);
+  const [loadingCapabilities, setLoadingCapabilities] = useState<boolean>(true);
+  const [loadingNodeTypes, setLoadingNodeTypes] = useState<boolean>(true);
+
+  type Address = {
+    street: string;
+    city: string;
+    state: string;
+    zip: string;
+    country: string;
+  };
+
+  const [address, setAddress] = useState<Address | null>(null); // State to hold the captured address
+
+  const theme = createTheme({
+    palette: {
+      mode: darkMode ? "dark" : "light",
     },
   });
 
-  // Watching the value of the "profile_image_url" field
+  const handleThemeToggle = () => {
+    setDarkMode((prevMode) => !prevMode);
+  };
+
+  const {
+    handleSubmit,
+    control,
+    setValue,
+    watch,
+    formState: { isSubmitting },
+  } = useForm({
+    defaultValues: {
+      name: "",
+      profile_image_url: "",
+      node_type: "",
+      established_on: "",
+      description: "",
+      public_access: false,
+      admin_contact: "",
+      matrix_server_url: "",
+      nostr_relay_url: "",
+      ipfs_gateway_url: "",
+      sync_enabled: true,
+      capabilities: [],
+      is_mirror: false,
+    },
+  });
+
   const profileImageUrl = watch("profile_image_url");
 
-  // Function to handle form submission
+  // Fetch node types from the database
+  useEffect(() => {
+    const fetchNodeTypes = async () => {
+      try {
+        const { data, error } = await supabaseClient
+          .from("node-types")
+          .select("id, node_type");
+
+        if (error) {
+          throw error;
+        }
+
+        setNodeTypes(data || []);
+      } catch (err) {
+        console.error("Failed to fetch node types:", err);
+      } finally {
+        setLoadingNodeTypes(false);
+      }
+    };
+
+    fetchNodeTypes();
+  }, []);
+
+  // Fetch capabilities from the database
+  useEffect(() => {
+    const fetchCapabilities = async () => {
+      try {
+        const { data, error } = await supabaseClient
+          .from("node-capabilities")
+          .select("capability");
+
+        if (error) {
+          throw error;
+        }
+
+        setCapabilities(data?.map((item) => item.capability) || []);
+      } catch (err) {
+        console.error("Failed to fetch capabilities:", err);
+      } finally {
+        setLoadingCapabilities(false);
+      }
+    };
+
+    fetchCapabilities();
+  }, []);
+
   const onSubmit = async (data: any) => {
     console.log("Submitted node data:", data);
 
-    const { error } = await supabaseClient
-      .from("nodes") // Specify the table name here
-      .insert([data]); // Insert the form data as a new row
+    // Insert the address into the addresses table
+    const { data: addressData, error: addressError } = await supabaseClient
+      .from("addresses")
+      .insert([address])
+      .select("id")
+      .single();
 
-    if (error) {
-      console.error("Insert failed:", error.message);
+    if (addressError) {
+      console.error("Address insert failed:", addressError.message);
+      return;
+    }
+
+    // Use the address ID in the node data
+    const nodeData = { ...data, address_id: addressData.id };
+
+    // Insert the node into the nodes table
+    const { error: nodeError } = await supabaseClient.from("nodes").insert([nodeData]);
+    if (nodeError) {
+      console.error("Node insert failed:", nodeError.message);
     } else {
-      console.log("Insert successful!");
+      console.log("Node insert successful!");
     }
   };
 
   return (
-    // Form container with styling
-    <Box
-      component="form"
-      onSubmit={handleSubmit(onSubmit)} // Attach the form submission handler
-      sx={{ maxWidth: 600, mx: "auto", display: "flex", flexDirection: "column", gap: 2 }} // Styling for layout
-    >
-      {/* Field for the "name" input */}
-      <Controller
-        name="name"
-        control={control}
-        rules={{ required: "Name is required" }} // Validation rule
-        render={({ field }) => (
-          <TextField label="Name" {...field} fullWidth required />
-        )}
-      />
-
-      {/* Field for the "address" input */}
-      <Controller
-        name="address"
-        control={control}
-        render={({ field }) => (
-          <TextField label="Address" {...field} fullWidth />
-        )}
-      />
-
-      {/* ImageHandler for profile image upload */}
-      <ImageHandler
-        bucket="nodes"
-        initialUrl={profileImageUrl}
-        onUpload={(url) => {
-          setValue("profile_image_url", url); // Update the form state with the uploaded image URL
-          console.log("Image uploaded to:", url);
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          mb: 2,
         }}
-      />
+      >
+        <Typography variant="h6" sx={{ textAlign: "center" }}>Node Setup</Typography>
+        <FormControlLabel
+          control={<Switch checked={darkMode} onChange={handleThemeToggle} />}
+          label="Dark Mode"
+        />
+      </Box>
+      <Box
+        component="form"
+        onSubmit={handleSubmit(onSubmit)}
+        sx={{
+          maxWidth: 600,
+          mx: "auto",
+          display: "flex",
+          flexDirection: "column",
+          gap: 3,
+          p: 2,
+        }}
+      >
+        <Typography variant="h5">Basic Node Details</Typography>
 
-      {/* Dropdown for selecting the node type */}
-      <Controller
-        name="node_type"
-        control={control}
-        render={({ field }) => (
-          <TextField select label="Node Type" {...field} fullWidth>
-            <MenuItem value="">Select a type</MenuItem>
-            <MenuItem value="community">Community</MenuItem>
-            <MenuItem value="farm">Farm</MenuItem>
-            <MenuItem value="maker">Maker Space</MenuItem>
-          </TextField>
-        )}
-      />
+        <Typography variant="subtitle1">Node Name</Typography>
+        <Typography variant="body2" color="textSecondary">
+          Enter the name of the node. This is a required field.
+        </Typography>
+        <Controller
+          name="name"
+          control={control}
+          rules={{ required: "Name is required" }}
+          render={({ field }) => (
+            <TextField label="Node Name" {...field} fullWidth required />
+          )}
+        />
 
-      {/* Date picker for the "established_on" field */}
-      <Controller
-        name="established_on"
-        control={control}
-        render={({ field }) => (
-          <TextField
-            label="Established On"
-            type="date"
-            {...field}
-            InputLabelProps={{ shrink: true }} // Ensures the label doesn't overlap the date picker
-            fullWidth
+        <Typography variant="subtitle1">Physical Address</Typography>
+        <Typography variant="body2" color="textSecondary">
+          Provide the physical address of the node.
+        </Typography>
+        <AddressCapture
+          onChange={(capturedAddress) => {
+            const completeAddress = {
+              ...capturedAddress,
+              zip: capturedAddress.postalCode || "", // Map 'postalCode' to 'zip'
+            };
+            setAddress(completeAddress); // Update the address state
+            console.log("Captured address:", completeAddress);
+          }}
+        />
+
+        <Typography variant="subtitle1">Profile Image</Typography>
+        <Typography variant="body2" color="textSecondary">
+          Upload an image to represent the node.
+        </Typography>
+        <ImageHandler
+          bucket="nodes"
+          initialUrl={profileImageUrl}
+          onUpload={(url) => {
+            setValue("profile_image_url", url);
+            console.log("Image uploaded to:", url);
+          }}
+        />
+
+        <Typography variant="subtitle1">Node Type</Typography>
+        <Typography variant="body2" color="textSecondary">
+          Select the type of node from the dropdown.
+        </Typography>
+        {loadingNodeTypes ? (
+          <CircularProgress />
+        ) : (
+          <Controller
+            name="node_type"
+            control={control}
+            rules={{ required: "Node type is required" }}
+            render={({ field }) => (
+              <Select
+                {...field}
+                fullWidth
+                displayEmpty
+                input={<OutlinedInput />}
+              >
+                <MenuItem value="" disabled>
+                  Select a node type
+                </MenuItem>
+                {nodeTypes.map((nodeType) => (
+                  <MenuItem key={nodeType.id} value={nodeType.node_type}>
+                    {nodeType.node_type}
+                  </MenuItem>
+                ))}
+              </Select>
+            )}
           />
         )}
-      />
 
-      {/* Submit button */}
-      <Button type="submit" variant="contained" disabled={isSubmitting}>
-        Save Node
-      </Button>
-    </Box>
+        <Typography variant="subtitle1">Established On</Typography>
+        <Typography variant="body2" color="textSecondary">
+          Specify the date when the node was established.
+        </Typography>
+        <Controller
+          name="established_on"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              label="Established On"
+              type="date"
+              {...field}
+              InputLabelProps={{ shrink: true }}
+              fullWidth
+            />
+          )}
+        />
+
+        <Typography variant="subtitle1">Node Description</Typography>
+        <Typography variant="body2" color="textSecondary">
+          Provide a brief description of the node's purpose and activities.
+        </Typography>
+        <Controller
+          name="description"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              label="Node Description"
+              {...field}
+              multiline
+              rows={3}
+              fullWidth
+            />
+          )}
+        />
+
+        <Typography variant="subtitle1">Capabilities</Typography>
+        <Typography variant="body2" color="textSecondary">
+          Select the capabilities offered by the node.
+        </Typography>
+        {loadingCapabilities ? (
+          <CircularProgress />
+        ) : (
+          <Controller
+            name="capabilities"
+            control={control}
+            render={({ field }) => (
+              <Select
+                label="Capabilities"
+                multiple
+                fullWidth
+                value={field.value}
+                onChange={field.onChange}
+                input={<OutlinedInput />}
+                renderValue={(selected: string[]) => (
+                  <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+                    {selected.map((value) => (
+                      <Chip key={value} label={value} />
+                    ))}
+                  </Box>
+                )}
+              >
+                {capabilities.map((cap) => (
+                  <MenuItem key={cap} value={cap}>
+                    {cap}
+                  </MenuItem>
+                ))}
+              </Select>
+            )}
+          />
+        )}
+
+        <Accordion>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            <Typography>Advanced Options</Typography>
+          </AccordionSummary>
+          <AccordionDetails>
+            <Typography variant="subtitle1">Public Access</Typography>
+            <Typography variant="body2" color="textSecondary">
+              Indicate whether the node is open to public access.
+            </Typography>
+            <Controller
+              name="public_access"
+              control={control}
+              render={({ field }) => (
+                <FormControlLabel
+                  control={<Checkbox {...field} checked={field.value} />}
+                  label="Open to public access"
+                />
+              )}
+            />
+
+            <Typography variant="subtitle1">Admin Contact</Typography>
+            <Typography variant="body2" color="textSecondary">
+              Provide the email or handle of the node's administrator.
+            </Typography>
+            <Controller
+              name="admin_contact"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  label="Admin Contact (email or handle)"
+                  {...field}
+                  fullWidth
+                />
+              )}
+            />
+
+            <Typography variant="subtitle1">Matrix Server URL</Typography>
+            <Typography variant="body2" color="textSecondary">
+              Enter the URL of the Matrix server associated with the node.
+            </Typography>
+            <Controller
+              name="matrix_server_url"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  label="Matrix Server URL"
+                  {...field}
+                  fullWidth
+                />
+              )}
+            />
+
+            <Typography variant="subtitle1">Nostr Relay URL</Typography>
+            <Typography variant="body2" color="textSecondary">
+              Enter the URL of the Nostr relay associated with the node.
+            </Typography>
+            <Controller
+              name="nostr_relay_url"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  label="Nostr Relay URL"
+                  {...field}
+                  fullWidth
+                />
+              )}
+            />
+
+            <Typography variant="subtitle1">IPFS Gateway URL</Typography>
+            <Typography variant="body2" color="textSecondary">
+              Enter the URL of the IPFS gateway associated with the node.
+            </Typography>
+            <Controller
+              name="ipfs_gateway_url"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  label="IPFS Gateway URL"
+                  {...field}
+                  fullWidth
+                />
+              )}
+            />
+
+            <Typography variant="subtitle1">Sync Enabled</Typography>
+            <Typography variant="body2" color="textSecondary">
+              Enable or disable synchronization with other nodes.
+            </Typography>
+            <Controller
+              name="sync_enabled"
+              control={control}
+              render={({ field }) => (
+                <FormControlLabel
+                  control={<Checkbox {...field} checked={field.value} />}
+                  label="Enable sync with other nodes"
+                />
+              )}
+            />
+
+            <Typography variant="subtitle1">Acts as a Data Mirror</Typography>
+            <Typography variant="body2" color="textSecondary">
+              Indicate whether the node acts as a data mirror.
+            </Typography>
+            <Controller
+              name="is_mirror"
+              control={control}
+              render={({ field }) => (
+                <FormControlLabel
+                  control={<Checkbox {...field} checked={field.value} />}
+                  label="Acts as a data mirror"
+                />
+              )}
+            />
+          </AccordionDetails>
+        </Accordion>
+
+        <Box mt={3}>
+          <Button type="submit" variant="contained" disabled={isSubmitting}>
+            Save Node
+          </Button>
+        </Box>
+      </Box>
+    </ThemeProvider>
   );
 };
