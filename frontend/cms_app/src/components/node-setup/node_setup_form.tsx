@@ -4,12 +4,10 @@ import { TextField, Button, Box, MenuItem, Typography } from "@mui/material"; //
 import { Controller } from "react-hook-form"; // React Hook Form's controller for controlled components
 import { useState } from "react"; // React state management
 import { supabaseClient } from "../../utility/supabaseClient"; // Supabase client for database interactions
+import { ImageHandler } from "../common/image_handler"; // Import the ImageHandler component
 
 // Main component for the Node Setup Form
 export const NodeSetupForm = () => {
-  // State to manage the uploading status of the profile image
-  const [uploading, setUploading] = useState(false);
-
   // Initializing the form with default values and extracting necessary methods
   const {
     handleSubmit, // Handles form submission
@@ -30,35 +28,10 @@ export const NodeSetupForm = () => {
   // Watching the value of the "profile_image_url" field
   const profileImageUrl = watch("profile_image_url");
 
-  // Function to handle image upload
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]; // Get the selected file
-    if (!file) return;
-
-    setUploading(true); // Set uploading state to true
-    const filePath = `profile_image/${file.name}`; // Define the file path in the storage bucket
-
-    // Upload the file to Supabase storage
-    const { error } = await supabaseClient.storage
-      .from("nodes") // Your bucket name
-      .upload(filePath, file, {
-        cacheControl: "3600", // Cache control settings
-        upsert: true, // Overwrite if the file already exists
-      });
-
-    if (error) {
-      console.error("Upload failed:", error.message); // Log the error if upload fails
-    } else {
-      setValue("profile_image_url", filePath); // Set the uploaded file path in the form
-    }
-    setUploading(false); // Set uploading state to false
-  };
-
   // Function to handle form submission
   const onSubmit = async (data: any) => {
     console.log("Submitted node data:", data);
 
-    
     const { error } = await supabaseClient
       .from("nodes") // Specify the table name here
       .insert([data]); // Insert the form data as a new row
@@ -95,20 +68,16 @@ export const NodeSetupForm = () => {
           <TextField label="Address" {...field} fullWidth />
         )}
       />
-      
-      {/* File upload button for the profile image */}
-      <Box>
-        <Button variant="outlined" component="label" disabled={uploading}>
-          {uploading ? "Uploading..." : "Upload Profile Image"} {/* Button text changes based on upload state */}
-          <input type="file" hidden accept="image/*" onChange={handleImageUpload} /> {/* Hidden file input */}
-        </Button>
-        {/* Display the uploaded file path if available */}
-        {profileImageUrl && (
-          <Typography variant="body2" sx={{ mt: 1 }}>
-            Stored at: <code>{profileImageUrl}</code>
-          </Typography>
-        )}
-      </Box>
+
+      {/* ImageHandler for profile image upload */}
+      <ImageHandler
+        bucket="nodes"
+        initialUrl={profileImageUrl}
+        onUpload={(url) => {
+          setValue("profile_image_url", url); // Update the form state with the uploaded image URL
+          console.log("Image uploaded to:", url);
+        }}
+      />
 
       {/* Dropdown for selecting the node type */}
       <Controller

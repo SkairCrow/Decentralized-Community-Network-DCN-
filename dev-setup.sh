@@ -16,3 +16,8 @@ node -v # Should print "v22.15.0".
 nvm current # Should print "v22.15.0".
 # Verify npm version:
 npm -v # Should print "10.9.2".
+
+# install uuid package
+# This package is used to generate unique identifiers.
+npm install uuid
+npm install --save-dev @types/uuid
