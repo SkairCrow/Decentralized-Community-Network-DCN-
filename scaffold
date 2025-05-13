@@ -1,0 +1,43 @@
+DCN/
+├── backend/
+│   └── supabase/                # Local Supabase instance (Dockerized)
+│       └── migrations/
+│       └── seed/
+│       └── edge-functions/
+│
+├── frontend/
+│   ├── cms_app/                 # Refine-based admin CMS
+│   │   ├── src/                 
+│   │   │   ├── pages/           # Refine routes (e.g., how-tos, events, tools)
+│   │   │   ├── resources/       # Refine resources (e.g., how-tos, events, tools)
+│   │   │   └── components/      # Reusable components
+│   │   └── public/
+│   │   └── .env
+│   │   └── package.json
+│   │
+│   └── community_portal/       # Custom public frontend (Vite+React or Next.js)
+│       ├── src/
+│       │   ├── pages/           # Landing page, dashboards, how-to viewer
+│       │   ├── features/        # Charts, media, diagrams, maps
+│       │   ├── components/
+│       │   └── hooks/
+│       └── public/
+│       └── .env
+│       └── package.json
+│
+├── tools/                      # Integrated open-source tool services
+│   ├── farmos_agriculture/     # FarmOS integration module
+│   ├── moodle_education/       # Moodle instance
+│   ├── openmaint_maintenance/  # OpenMaint instance
+│   └── openproject_pm/         # OpenProject instance
+│
+├── shared/                     # Shared code between frontend apps
+│   ├── ui/                     # Common components
+│   ├── types/                  # Shared TypeScript types, Zod schemas
+│   ├── utils/                  # Formatting, date utils, API clients
+│
+├── dev-setup.sh                # Script to set up local dev environment
+├── docker-compose.yml          # Local deployment stack
+├── .env.example                # Example env file 
+├── .env                        # Global config
+├── README.md

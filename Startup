@@ -1,0 +1,5 @@
+from /backend run
+    supabase start --ignore-health-check
+
+from frontend/cms_app run
+    npm run dev
