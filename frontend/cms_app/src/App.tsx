@@ -34,6 +34,7 @@ import { supabaseClient } from "./utility";
 
 // Importing a custom component for the "Node Setup" form
 import { NodeSetupForm } from "./components/node-setup/node_setup_form";
+import AdminDashPage from "./pages/admin-dash";
 
 // Main App component
 function App() {
@@ -67,9 +68,10 @@ function App() {
               {/* Defines application routes */}
               <Routes>
                 {/* Redirect the root path to the "Node Setup" form */}
-                <Route path="/" element={<Navigate to="node-setup" replace />} />
+                <Route path="/" element={<Navigate to="admin-dash" replace />} />
                 {/* Route for the "Node Setup" form */}
                 <Route path="node-setup" element={<NodeSetupForm />} />
+                <Route path="admin-dash" element={<AdminDashPage />} />
               </Routes>
 
               {/* Adds keyboard shortcuts (Kbar) UI */}

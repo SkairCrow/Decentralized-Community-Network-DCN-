@@ -46,6 +46,7 @@ export const NodeSetupForm = () => {
     state: string;
     zip: string;
     country: string;
+    postalcode: string;
   };
 
   const [address, setAddress] = useState<Address | null>(null); // State to hold the captured address
@@ -208,10 +209,10 @@ export const NodeSetupForm = () => {
           Provide the physical address of the node.
         </Typography>
         <AddressCapture
-          onChange={(capturedAddress) => {
+          onChange={(capturedAddress: { postalCode: any; }) => {
             const completeAddress = {
               ...capturedAddress,
-              zip: capturedAddress.postalCode || "", // Map 'postalCode' to 'zip'
+              zip: capturedAddress.zip || "", // Map 'postalCode' to 'zip'
             };
             setAddress(completeAddress); // Update the address state
             console.log("Captured address:", completeAddress);
